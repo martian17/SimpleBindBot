@@ -79,17 +79,6 @@ const getChannels = async function(){
         }
     }
     log("hooks all prepared");
-    //send test messages to each channels
-    /*for(let cid in channels){
-        let channel = channels[cid];
-        let hook = channel.hook;
-        let res = await doPost(`/webhooks/${hook.id}/${hook.token}`,{
-            content:`hello ${channel.name}`,
-            username:`mockingbird in ${channel.name}`,
-            avatar_url:"https://cdn.discordapp.com/avatars/538903439686762496/a82ad47c849ed8e1730221f9ab6a865e.webp?size=80"
-        });
-        log(channel.name,await res.text());
-    }*/
     return channels;
 };
 
@@ -146,7 +135,6 @@ client.on("messageCreate", async message => {
 
 client.once('ready', async () => {
 	log('Ready!');
-    //log(await client.user.setUsername("Bindertron 1000"));
 });
 
 client.login(process.env.DISCORD_TOKEN);
