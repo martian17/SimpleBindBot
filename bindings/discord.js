@@ -1,6 +1,11 @@
 const fetch = (()=>{let m = import("node-fetch");return async (...args)=>await (await m).default(...args);})();
 require("dotenv").config();
 
+const log = function(...vals){
+    console.log("discord:",...vals);
+}
+
+
 //guild channel event mapping
 const guildid = "1025691579974942722";
 
@@ -73,7 +78,7 @@ const getChannels = async function(){
             channel.hook = hook;
         }
     }
-    console.log("hooks all prepared");
+    log("hooks all prepared");
     //send test messages to each channels
     /*for(let cid in channels){
         let channel = channels[cid];
@@ -83,7 +88,7 @@ const getChannels = async function(){
             username:`mockingbird in ${channel.name}`,
             avatar_url:"https://cdn.discordapp.com/avatars/538903439686762496/a82ad47c849ed8e1730221f9ab6a865e.webp?size=80"
         });
-        console.log(channel.name,await res.text());
+        log(channel.name,await res.text());
     }*/
     return channels;
 };
@@ -131,8 +136,8 @@ client.on("messageCreate", async message => {
 });
 
 client.once('ready', async () => {
-	console.log('Discord bot Ready!');
-    //console.log(await client.user.setUsername("Bindertron 1000"));
+	log('Ready!');
+    //log(await client.user.setUsername("Bindertron 1000"));
 });
 
 client.login(process.env.DISCORD_TOKEN);
