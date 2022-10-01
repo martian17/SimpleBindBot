@@ -1,6 +1,4 @@
-const fetch = (...args) => import('node-fetch').then(({
-    default: fetch
-}) => fetch(...args));
+const fetch = (()=>{let m = import("node-fetch");return async (...args)=>await (await m).default(...args);})();
 const bodyParser = require("body-parser");
 const crypto = require('node:crypto');
 
@@ -11,7 +9,7 @@ let app = null;
 let hub = null;
 let thisOrigin = "line";
 //groupid = false;
-let groupid = "C379456dec637d5386c0849faf62e3f4b";
+let groupid = "C0a8c6e12f4c55ab12c3e1ae7bcc5c291";//"C379456dec637d5386c0849faf62e3f4b";
 
 
 const validateLineWebhook = function(req,res,next){
@@ -51,9 +49,10 @@ const getUserInfo = async function(groupid,userid){
 
 
 const handleMessage = async function(msg){
-    console.log(msg);
-    groupid = msg?.source?.groupId || groupid;
-    //console.log("msg sent by line: ",msg);
+    //console.log(msg);
+    //groupid = msg?.source?.groupId || groupid;
+    if(msg?.source?.groupId !== groupid)return;
+    console.log("msg sent by line: ",msg);
     const message = msg.message;
     if(message.type === "text"){
         //console.log(msg);
