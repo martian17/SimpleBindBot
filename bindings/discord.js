@@ -106,7 +106,17 @@ const sendMessage = function(channel,msg){
         username:msg.name+` (${msg.originText})`,
         avatar_url:msg.iconURL
     });
-}
+};
+
+const getNickname = async function(message){
+    let name;
+    try{
+        name = (await message.guild.members.fetch(message.author.id)).displayName;
+    }catch(err){
+        name=null;
+    }
+    return name || message.author.username;
+};
 
 
 const { Client, GatewayIntentBits } = require("discord.js");
@@ -122,14 +132,13 @@ client.on("messageCreate", async message => {
         return;
     }
     const channel = channels[cid];
-    channel.emit.map(e=>{
-        console.log("emitting ",e);
+    channel.emit.map(async e=>{
         hub.emit(e,{
             type:"text",
             text:message.content,
-            name:message.author.username,
-            origin:"discord:"+channel.id,
-            originText:channel.name,
+            name:await getNickname(message),
+            origin:"discord:"+cid,
+            originText:"discord",//channel.name,
             iconURL:message.author.displayAvatarURL()
         });
     });
