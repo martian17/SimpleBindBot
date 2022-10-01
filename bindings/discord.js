@@ -1,78 +1,150 @@
-const { Client, GatewayIntentBits } = require('discord.js');
-//invite link
-//https://discord.com/api/oauth2/authorize?client_id=1022459038987997294&permissions=274877910016&redirect_uri=https%3A%2F%2Fdiscordapp.com%2Foauth2%2Fauthorize%3F%26client_id%3D1022459038987997294%26scope%3Dbot&response_type=code&scope=bot%20messages.read
-//make sure to turn on the message content intent
+const fetch = (()=>{let m = import("node-fetch");return async (...args)=>await (await m).default(...args);})();
+require("dotenv").config();
 
-// Create a new client instance
+//guild channel event mapping
+const guildid = "1025691579974942722";
+
+/*
+general 1025691580516020297
+frontend 1025691708773642250
+backend 1025691736737054760
+*/
+
+const channels = {
+    "1025691580516020297":{
+        name:"general",
+        listen:["general"],
+        emit:["general"]
+    },
+    "1025691708773642250":{
+        name:"frontend",
+        listen:["frontend"],
+        emit:["frontend"]
+    },
+    "1025691736737054760":{
+        name:"backend",
+        listen:["backend"],
+        emit:["backend"]
+    }
+};
+
+const baseURL = "https://discord.com/api/v10";
+const doPost = async function(path,body){
+    return await fetch(baseURL+path,{
+        method:"post",
+        headers:{
+            Authorization:`Bot ${process.env.DISCORD_TOKEN}`,
+            "Content-Type": "application/json"
+        },
+        body:JSON.stringify(body)
+    });
+};
+const doGet = async function(path){
+    return await fetch(baseURL+path,{
+        method:"get",
+        headers:{
+            Authorization:`Bot ${process.env.DISCORD_TOKEN}`
+        }
+    });
+};
+const resJSON = async function(resprom){
+    let res = await resprom;
+    return await res.json();
+};
+
+
+const getChannels = async function(){
+    //getting hooks for each of the channels
+    let hooks = await resJSON(doGet(`/guilds/${guildid}/webhooks`));
+    for(let hook of hooks){
+        if(hook?.user?.id !== process.env.DISCORD_BOT_ID)continue;
+        const cid = hook.channel_id;
+        if(cid in channels){
+            channels[cid].hook = hook;
+        }
+    }
+    for(let cid in channels){
+        let channel = channels[cid];
+        if(!("hook" in channel)){
+            //create a new hook for the channel
+            let hook = await resJSON(doPost(`/channels/${cid}/webhooks`,{
+                name:"mocking drone"
+            }));
+            channel.hook = hook;
+        }
+    }
+    console.log("hooks all prepared");
+    //send test messages to each channels
+    /*for(let cid in channels){
+        let channel = channels[cid];
+        let hook = channel.hook;
+        let res = await doPost(`/webhooks/${hook.id}/${hook.token}`,{
+            content:`hello ${channel.name}`,
+            username:`mockingbird in ${channel.name}`,
+            avatar_url:"https://cdn.discordapp.com/avatars/538903439686762496/a82ad47c849ed8e1730221f9ab6a865e.webp?size=80"
+        });
+        console.log(channel.name,await res.text());
+    }*/
+    return channels;
+};
+
+const channelPromise = getChannels();
+
+
+
+const sendMessage = function(channel,msg){
+    if(msg.origin === "discord:"+channel.id)return;
+    if(msg.type !== "text")return;
+    let hook = channel.hook;
+    doPost(`/webhooks/${hook.id}/${hook.token}`,{
+        content:msg.text,
+        username:msg.name+` (${msg.originText})`,
+        avatar_url:msg.iconURL
+    });
+}
+
+
+const { Client, GatewayIntentBits } = require("discord.js");
+let app,hub;
 const client = new Client({ intents: [GatewayIntentBits.Guilds|GatewayIntentBits.MessageContent|GatewayIntentBits.GuildMessages] });
 
-// When the client is ready, run this code (only once)
-client.once('ready', () => {
-	console.log('Discord bot Ready!');
-});
-
-
-const guildid = "1022460670081515560";
-const channels = {
-    "1022460670568059002":"general",
-    "1022465674355949638":"frontend",
-    "1022465698167005206":"backend"
-};
-const thisOrigin = "discord"
-
-
-client.on("messageCreate", message => {
-    //console.log("\n\n\n\n\n");
-    //console.log(message);
-    //console.log("\n\n\n\n\n");
-    
+client.on("messageCreate", async message => {
     const cid = message.channelId;
-    if(!(cid in channels)){
+    const channels = await channelPromise;
+    if(!(cid in channels) ||
+       message.author.id === channels[cid].hook.id || 
+       !hub){
         return;
     }
-    const cname = channels[cid];
-    hub.emit(cname,{
-        type:"text",
-        text:message.content,
-        name:message.author.username,
-        origin:thisOrigin,
-        originText:cname,//`${thisOrigin}:${cname}`,
-        iconURL:message.author.displayAvatarURL()
+    const channel = channels[cid];
+    channel.emit.map(e=>{
+        console.log("emitting ",e);
+        hub.emit(e,{
+            type:"text",
+            text:message.content,
+            name:message.author.username,
+            origin:"discord:"+channel.id,
+            originText:channel.name,
+            iconURL:message.author.displayAvatarURL()
+        });
     });
 });
 
+client.once('ready', async () => {
+	console.log('Discord bot Ready!');
+    //console.log(await client.user.setUsername("Bindertron 1000"));
+});
 
-
-const sendMessage = function(cid,msg){
-    if(msg.originName === thisOrigin)return;
-    
-};
-
-
-
-//jeez want to defer
-// Login to Discord with your client's token
 client.login(process.env.DISCORD_TOKEN);
 
 
 
-
-
-module.exports = function(_app,_hub){
+module.exports = async function(_app,_hub){
     app = _app;
     hub = _hub;
-    /*app.post("/webhook/line",validateLineWebhook,(req,res)=>{
-        res.sendStatus(200);//got the webhook, thank you very much
-        //handle the response messages
-        const events = req.body.events || [];
-        for(let evt of events){
-            if(evt.type === "message")handleMessage(evt);
-        }
-    });
-    hub.on("general",sendMessage);*/
-    Object.entries(channels).map(([cid,cname])=>{
-        hub.on(cname,(msg)=>{
-            sendMessage(cid,msg);
-        });
+    let channels = await channelPromise;
+    Object.entries(channels).map(([cid,channel])=>{
+        channel.listen.map(e=>hub.on(e,(msg)=>sendMessage(channel,msg)));
     });
 };
+
